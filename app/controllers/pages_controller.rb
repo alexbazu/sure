@@ -394,20 +394,27 @@ class PagesController < ApplicationController
       links = []
       node_indices = {}
 
+      # Round amounts once, to the currency's own decimals, so the chart's
+      # formatter does not round an already rounded amount again (JPY 124.499
+      # must not become 124.5 and then 125). Float#round(0) returns an Integer,
+      # which would turn the percentage divisions below into integer division.
+      precision = Money::Currency.new(currency).default_precision
+      round_amount = ->(value) { value.to_f.round(precision).to_f }
+
       add_node = ->(unique_key, display_name, value, percentage, color, filter_value = nil) {
         node_indices[unique_key] ||= begin
-          nodes << { id: unique_key, name: display_name, filter_value: filter_value, value: value.to_f.round(2), percentage: percentage.to_f.round(1), color: color }
+          nodes << { id: unique_key, name: display_name, filter_value: filter_value, value: round_amount.call(value), percentage: percentage.to_f.round(1), color: color }
           nodes.size - 1
         end
       }
 
-      total_income = net_totals.total_net_income.to_f.round(2)
-      total_expense = net_totals.total_net_expense.to_f.round(2)
-      total_invested = invested_total&.amount.to_f.round(2)
+      total_income = round_amount.call(net_totals.total_net_income)
+      total_expense = round_amount.call(net_totals.total_net_expense)
+      total_invested = round_amount.call(invested_total&.amount)
 
       # Central Cash Flow node, sized to whichever side is larger so a deficit
       # (outflows above income) still balances, as IncomeStatement::Sankey does
-      capacity = [ total_income, (total_expense + total_invested).round(2) ].max
+      capacity = [ total_income, round_amount.call(total_expense + total_invested) ].max
       cash_flow_idx = add_node.call("cash_flow_node", "Cash Flow", capacity, 100.0, "var(--color-success)")
 
       # Build netted subcategory data from raw totals
@@ -422,6 +429,7 @@ class PagesController < ApplicationController
         add_node: add_node,
         links: links,
         cash_flow_idx: cash_flow_idx,
+        round_amount: round_amount,
         flow_direction: :inbound
       )
 
@@ -434,6 +442,7 @@ class PagesController < ApplicationController
         add_node: add_node,
         links: links,
         cash_flow_idx: cash_flow_idx,
+        round_amount: round_amount,
         flow_direction: :outbound
       )
 
@@ -445,7 +454,7 @@ class PagesController < ApplicationController
       end
 
       # Surplus/Deficit
-      net = (total_income - total_expense - total_invested).round(2)
+      net = round_amount.call(total_income - total_expense - total_invested)
       if net.positive?
         percentage = total_income.zero? ? 0 : (net / total_income * 100).round(1)
         idx = add_node.call("surplus_node", "Surplus", net, percentage, "var(--color-success)")
@@ -457,7 +466,7 @@ class PagesController < ApplicationController
         links << { source: idx, target: cash_flow_idx, value: deficit, color: "var(--color-destructive)", percentage: percentage }
       end
 
-      { nodes: nodes, links: links, currency: currency, precision: Money::Currency.new(currency).default_precision }
+      { nodes: nodes, links: links, currency: currency, precision: precision }
     end
 
     # Nets subcategory expense and income totals, grouped by parent_id.
@@ -500,11 +509,11 @@ class PagesController < ApplicationController
     #
     # flow_direction: :inbound  (subcategory -> parent -> cash_flow) for income
     #                 :outbound (cash_flow -> parent -> subcategory) for expenses
-    def process_net_category_nodes(categories:, total:, prefix:, net_subcategories_by_parent:, add_node:, links:, cash_flow_idx:, flow_direction:)
+    def process_net_category_nodes(categories:, total:, prefix:, net_subcategories_by_parent:, add_node:, links:, cash_flow_idx:, flow_direction:, round_amount:)
       matching_direction = flow_direction == :inbound ? :income : :expense
 
       categories.each do |ct|
-        val = ct.total.to_f.round(2)
+        val = round_amount.call(ct.total)
         next if val.zero?
 
         percentage = total.zero? ? 0 : (val / total * 100).round(1)
@@ -529,7 +538,7 @@ class PagesController < ApplicationController
           end
 
           same_side_subs.each do |sub|
-            sub_val = sub[:total].to_f.round(2)
+            sub_val = round_amount.call(sub[:total])
             sub_pct = val.zero? ? 0 : (sub_val / val * 100).round(1)
             sub_color = sub[:category].color.presence || color
             sub_key = "#{prefix}_sub_#{sub[:category].id}"
@@ -556,7 +565,7 @@ class PagesController < ApplicationController
         # that goes against the parent's overall direction.
         opposite_prefix = flow_direction == :inbound ? "expense" : "income"
         opposite_subs.each do |sub|
-          sub_val = sub[:total].to_f.round(2)
+          sub_val = round_amount.call(sub[:total])
           sub_pct = total.zero? ? 0 : (sub_val / total * 100).round(1)
           sub_color = sub[:category].color.presence || color
           sub_key = "#{opposite_prefix}_sub_#{sub[:category].id}"
@@ -574,6 +583,8 @@ class PagesController < ApplicationController
 
     def build_outflows_donut_data(net_totals)
       total = net_totals.total_net_expense
+      # One rounding, to the currency's decimals: format_money rounds again.
+      precision = Money::Currency.new(net_totals.currency).default_precision
 
       categories = net_totals.net_expense_categories
         .reject { |ct| ct.total.zero? }
@@ -583,7 +594,7 @@ class PagesController < ApplicationController
             id: ct.category.id,
             name: ct.category.name,
             filter_value: ct.category.filter_value,
-            amount: ct.total.to_f.round(2),
+            amount: ct.total.to_f.round(precision).to_f,
             currency: ct.currency,
             percentage: ct.weight.round(1),
             color: ct.category.color.presence || Category::UNCATEGORIZED_COLOR,
@@ -592,7 +603,7 @@ class PagesController < ApplicationController
           }
         end
 
-      { categories: categories, total: total.to_f.round(2), currency: net_totals.currency }
+      { categories: categories, total: total.to_f.round(precision).to_f, currency: net_totals.currency }
     end
 
     # Two rings on one scale, read like a budget gauge with income as the

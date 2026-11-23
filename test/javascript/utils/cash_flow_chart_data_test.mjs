@@ -132,7 +132,12 @@ test("formats zero-decimal currencies and Sure currencies outside Intl", () => {
 });
 
 test("formats with Sure's precision where Intl's differs", () => {
-  assert.equal(formatCashFlowCurrency(12.5, "PKR", "en-US"), "PKR\u00a013");
+  // Intl's own PKR decimals depend on the runtime's CLDR data (0 from CLDR 48).
+  const intlPkr = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "PKR",
+  }).format(12.5);
+  assert.equal(formatCashFlowCurrency(12.5, "PKR", "en-US"), intlPkr);
   assert.equal(formatCashFlowCurrency(12.5, "PKR", "en-US", 2), "PKR\u00a012.50");
   assert.equal(formatCashFlowCurrency(1234.5, "JPY", "en-US", 0), "¥1,235");
   assert.equal(formatCashFlowCurrency(1.5, "IQD", "en-US", 3), "IQD\u00a01.500");
@@ -140,5 +145,5 @@ test("formats with Sure's precision where Intl's differs", () => {
     formatCashFlowCurrency(0.5, "DOGE", "en-US", 2),
     "0.50 DOGE",
   );
-  assert.equal(formatCashFlowCurrency(12.5, "PKR", "en-US", -1), "PKR\u00a013");
+  assert.equal(formatCashFlowCurrency(12.5, "PKR", "en-US", -1), intlPkr);
 });

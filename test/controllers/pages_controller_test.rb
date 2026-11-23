@@ -472,6 +472,22 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert sankey_data.fetch("nodes").any? { |node| node.fetch("id").start_with?("expense_") }
   end
 
+  test "dashboard sankey rounds amounts once, to the currency's decimals" do
+    @family.update!(currency: "JPY")
+    account = @family.accounts.create!(name: "JPY wallet", balance: 0, currency: "JPY", accountable: Depository.new)
+    category = @family.categories.create!(name: "Shopping", color: "#FF5733")
+    create_transaction(account: account, name: "Shopping trip", amount: 124.499, currency: "JPY", category: category)
+
+    get root_path
+
+    assert_response :ok
+    chart = css_select("[data-controller='sankey-chart']").first
+    assert_equal "0", chart["data-sankey-chart-precision-value"]
+    node = JSON.parse(chart["data-sankey-chart-data-value"]).fetch("nodes").find { |n| n.fetch("id") == "expense_#{category.id}" }
+    assert_equal 124.0, node.fetch("value")
+    assert_select "#segment_#{category.id} [data-donut-chart-target='amount']", text: Money.new(124, "JPY").format
+  end
+
   test "dashboard charts format amounts with the family currency" do
     category = @family.categories.create!(name: "Shopping", color: "#FF5733")
     create_transaction(account: @family.accounts.first, name: "Shopping trip", amount: 12.5, category: category)
