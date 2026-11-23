@@ -408,8 +408,10 @@ class PagesController < ApplicationController
         end
       }
 
-      total_income = round_amount.call(net_totals.total_net_income)
-      total_expense = round_amount.call(net_totals.total_net_expense)
+      # Sum the rounded category amounts that feed the links, so the Cash Flow
+      # node balances (two JPY 1.4 expenses are links of 1 each, not a total of 3).
+      total_income = round_amount.call(net_totals.net_income_categories.sum(0.0) { |ct| round_amount.call(ct.total) })
+      total_expense = round_amount.call(net_totals.net_expense_categories.sum(0.0) { |ct| round_amount.call(ct.total) })
       total_invested = round_amount.call(invested_total&.amount)
 
       # Central Cash Flow node, sized to whichever side is larger so a deficit

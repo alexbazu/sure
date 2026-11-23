@@ -488,6 +488,29 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#segment_#{category.id} [data-donut-chart-target='amount']", text: Money.new(124, "JPY").format
   end
 
+  test "dashboard sankey cash flow node balances after rounding" do
+    @family.update!(currency: "JPY")
+    account = @family.accounts.create!(name: "JPY wallet", balance: 0, currency: "JPY", accountable: Depository.new)
+    salary = @family.categories.create!(name: "Salary", color: "#33FF57")
+    books = @family.categories.create!(name: "Books", color: "#FF5733")
+    games = @family.categories.create!(name: "Games", color: "#3357FF")
+    create_transaction(account: account, name: "Payday", amount: -10, currency: "JPY", category: salary)
+    create_transaction(account: account, name: "Book", amount: 1.4, currency: "JPY", category: books)
+    create_transaction(account: account, name: "Game", amount: 1.4, currency: "JPY", category: games)
+
+    get root_path
+
+    assert_response :ok
+    chart = css_select("[data-controller='sankey-chart']").first
+    sankey_data = JSON.parse(chart["data-sankey-chart-data-value"])
+    cash_flow_idx = sankey_data.fetch("nodes").index { |n| n.fetch("id") == "cash_flow_node" }
+    links = sankey_data.fetch("links")
+    inflow = links.select { |l| l.fetch("target") == cash_flow_idx }.sum { |l| l.fetch("value") }
+    outflow = links.select { |l| l.fetch("source") == cash_flow_idx }.sum { |l| l.fetch("value") }
+
+    assert_in_delta inflow, outflow, 0.001
+  end
+
   test "dashboard charts format amounts with the family currency" do
     category = @family.categories.create!(name: "Shopping", color: "#FF5733")
     create_transaction(account: @family.accounts.first, name: "Shopping trip", amount: 12.5, category: category)
