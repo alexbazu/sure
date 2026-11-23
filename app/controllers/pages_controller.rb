@@ -457,7 +457,7 @@ class PagesController < ApplicationController
         links << { source: idx, target: cash_flow_idx, value: deficit, color: "var(--color-destructive)", percentage: percentage }
       end
 
-      { nodes: nodes, links: links, currency_symbol: Money::Currency.new(currency).symbol }
+      { nodes: nodes, links: links, currency: currency }
     end
 
     # Nets subcategory expense and income totals, grouped by parent_id.
@@ -573,7 +573,6 @@ class PagesController < ApplicationController
     end
 
     def build_outflows_donut_data(net_totals)
-      currency_symbol = Money::Currency.new(net_totals.currency).symbol
       total = net_totals.total_net_expense
 
       categories = net_totals.net_expense_categories
@@ -593,7 +592,7 @@ class PagesController < ApplicationController
           }
         end
 
-      { categories: categories, total: total.to_f.round(2), currency: net_totals.currency, currency_symbol: currency_symbol }
+      { categories: categories, total: total.to_f.round(2), currency: net_totals.currency }
     end
 
     # Two rings on one scale, read like a budget gauge with income as the

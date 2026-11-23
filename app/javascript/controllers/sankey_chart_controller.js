@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import * as d3 from "d3";
 import { sankey, sankeyCenter } from "d3-sankey";
+import { formatCashFlowCurrency } from "utils/cash_flow_chart_data";
 import { CHART_TOOLTIP_CLASSES } from "utils/chart_tooltip";
 import { sankeyLabelOnRight } from "utils/sankey_align";
 import { hiddenSankeyLabels } from "utils/sankey_labels";
@@ -20,7 +21,7 @@ export default class extends Controller {
     data: Object,
     nodeWidth: { type: Number, default: 15 },
     nodePadding: { type: Number, default: 20 },
-    currencySymbol: { type: String, default: "$" },
+    currency: { type: String, default: "USD" },
     startDate: String,
     endDate: String,
   };
@@ -711,10 +712,6 @@ export default class extends Controller {
   }
 
   #formatCurrency(value) {
-    const formatted = Number.parseFloat(value).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return this.currencySymbolValue + formatted;
+    return formatCashFlowCurrency(value, this.currencyValue);
   }
 }

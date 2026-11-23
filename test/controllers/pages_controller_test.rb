@@ -472,6 +472,19 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert sankey_data.fetch("nodes").any? { |node| node.fetch("id").start_with?("expense_") }
   end
 
+  test "dashboard charts format amounts with the family currency" do
+    category = @family.categories.create!(name: "Shopping", color: "#FF5733")
+    create_transaction(account: @family.accounts.first, name: "Shopping trip", amount: 12.5, category: category)
+
+    get root_path
+
+    assert_response :ok
+    chart = css_select("[data-controller='sankey-chart']").first
+    assert_equal @family.currency, chart["data-sankey-chart-currency-value"]
+    assert_select "#segment_#{category.id} [data-donut-chart-target='amount']",
+      text: Money.new(12.5, @family.currency).format
+  end
+
   test "dashboard sankey shows investment contributions as invested when they are not spending" do
     @family.update!(investment_contributions_as_spending: false)
     category = @family.categories.create!(name: "Shopping", color: "#FF5733")
