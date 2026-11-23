@@ -92,14 +92,21 @@ export function cashFlowChartData(body) {
 
 // Sure also supports currencies (such as DOGE/USDC) outside Intl's three-letter
 // currency identifiers. Preserve the unit in that display-only fallback.
-export function formatCashFlowCurrency(value, currency, locale) {
+// `precision` is Sure's own decimal count for the currency: Intl's differs for
+// some (PKR, COP, IQD, BTC), and would round the amount differently than Money.
+export function formatCashFlowCurrency(value, currency, locale, precision) {
+  const digits =
+    Number.isInteger(precision) && precision >= 0 && precision <= 20
+      ? { minimumFractionDigits: precision, maximumFractionDigits: precision }
+      : {};
   try {
     return Number(value).toLocaleString(locale, {
       style: "currency",
       currency,
+      ...digits,
     });
   } catch (error) {
     if (!(error instanceof RangeError)) throw error;
-    return `${Number(value).toLocaleString(locale, { maximumFractionDigits: 8 })} ${currency}`;
+    return `${Number(value).toLocaleString(locale, { maximumFractionDigits: 8, ...digits })} ${currency}`;
   }
 }

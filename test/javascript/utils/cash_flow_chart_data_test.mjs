@@ -130,3 +130,15 @@ test("formats zero-decimal currencies and Sure currencies outside Intl", () => {
   body.currency = "DOGE";
   assert.equal(cashFlowChartData(body).links.length, 1);
 });
+
+test("formats with Sure's precision where Intl's differs", () => {
+  assert.equal(formatCashFlowCurrency(12.5, "PKR", "en-US"), "PKR\u00a013");
+  assert.equal(formatCashFlowCurrency(12.5, "PKR", "en-US", 2), "PKR\u00a012.50");
+  assert.equal(formatCashFlowCurrency(1234.5, "JPY", "en-US", 0), "¥1,235");
+  assert.equal(formatCashFlowCurrency(1.5, "IQD", "en-US", 3), "IQD\u00a01.500");
+  assert.equal(
+    formatCashFlowCurrency(0.5, "DOGE", "en-US", 2),
+    "0.50 DOGE",
+  );
+  assert.equal(formatCashFlowCurrency(12.5, "PKR", "en-US", -1), "PKR\u00a013");
+});

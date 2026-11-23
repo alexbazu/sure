@@ -22,6 +22,7 @@ export default class extends Controller {
     nodeWidth: { type: Number, default: 15 },
     nodePadding: { type: Number, default: 20 },
     currency: { type: String, default: "USD" },
+    precision: Number,
     startDate: String,
     endDate: String,
   };
@@ -337,24 +338,26 @@ export default class extends Controller {
   }
 
   #drawLinks(svg, links) {
-    return svg
-      .append("g")
-      .attr("fill", "none")
-      .selectAll("path")
-      .data(links)
-      .join("path")
-      .attr("class", "sankey-link")
-      // Stays joined to its bars while a resize stretches the drawing.
-      .attr("data-settled-resize-joins", "")
-      .attr("d", (d) =>
-        d3.linkHorizontal()({
-          source: [d.source.x1, d.y0],
-          target: [d.target.x0, d.y1],
-        }),
-      )
-      .attr("stroke", (d, i) => `url(#${this.#gradientId(d, i)})`)
-      .attr("stroke-width", (d) => Math.max(1, d.width))
-      .style("transition", "opacity 0.3s ease");
+    return (
+      svg
+        .append("g")
+        .attr("fill", "none")
+        .selectAll("path")
+        .data(links)
+        .join("path")
+        .attr("class", "sankey-link")
+        // Stays joined to its bars while a resize stretches the drawing.
+        .attr("data-settled-resize-joins", "")
+        .attr("d", (d) =>
+          d3.linkHorizontal()({
+            source: [d.source.x1, d.y0],
+            target: [d.target.x0, d.y1],
+          }),
+        )
+        .attr("stroke", (d, i) => `url(#${this.#gradientId(d, i)})`)
+        .attr("stroke-width", (d) => Math.max(1, d.width))
+        .style("transition", "opacity 0.3s ease")
+    );
   }
 
   #drawNodes(svg, nodes, width) {
@@ -656,7 +659,13 @@ export default class extends Controller {
     return String(s).replace(
       /[&<>"']/g,
       (c) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[c],
     );
   }
 
@@ -712,6 +721,11 @@ export default class extends Controller {
   }
 
   #formatCurrency(value) {
-    return formatCashFlowCurrency(value, this.currencyValue);
+    return formatCashFlowCurrency(
+      value,
+      this.currencyValue,
+      undefined,
+      this.hasPrecisionValue ? this.precisionValue : undefined,
+    );
   }
 }

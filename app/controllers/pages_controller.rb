@@ -457,7 +457,7 @@ class PagesController < ApplicationController
         links << { source: idx, target: cash_flow_idx, value: deficit, color: "var(--color-destructive)", percentage: percentage }
       end
 
-      { nodes: nodes, links: links, currency: currency }
+      { nodes: nodes, links: links, currency: currency, precision: Money::Currency.new(currency).default_precision }
     end
 
     # Nets subcategory expense and income totals, grouped by parent_id.

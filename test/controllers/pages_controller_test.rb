@@ -481,6 +481,7 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
     chart = css_select("[data-controller='sankey-chart']").first
     assert_equal @family.currency, chart["data-sankey-chart-currency-value"]
+    assert_equal Money::Currency.new(@family.currency).default_precision.to_s, chart["data-sankey-chart-precision-value"]
     assert_select "#segment_#{category.id} [data-donut-chart-target='amount']",
       text: Money.new(12.5, @family.currency).format
   end

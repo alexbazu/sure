@@ -3,6 +3,7 @@
   data-controller="sankey-chart"
   data-sankey-chart-data-value="<%= sankey_data.to_json %>"
   data-sankey-chart-currency-value="<%= sankey_data[:currency] %>"
+  data-sankey-chart-precision-value="<%= sankey_data[:precision] %>"
   data-sankey-chart-start-date-value="<%= period.start_date&.iso8601 %>"
   data-sankey-chart-end-date-value="<%= period.end_date&.iso8601 %>"
   class="w-full h-full privacy-sensitive flex flex-col gap-2">
